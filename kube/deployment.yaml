@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: league-of-locals-admin-panel
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: league-of-locals-admin-panel
+  template:
+    metadata:
+      labels:
+        app: league-of-locals-admin-panel
+    spec:
+      containers:
+      - name: league-of-locals-admin-panel
+        image: ghcr.io/leagueoflocalsdev/league-of-locals-admin-panel:latest
+        ports:
+        - containerPort: 3000
+      imagePullSecrets:
+      - name: ghcr-secret

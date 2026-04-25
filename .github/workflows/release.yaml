@@ -1,0 +1,61 @@
+name: Build and Deploy Admin Panel
+
+on:
+  push:
+    branches: [ "main" ]
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/leagueoflocalsdev/league-of-locals-admin-panel:${{ github.sha }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DO_API_TOKEN }}
+
+      - name: Create .kube directory for config
+        run: mkdir -p ~/.kube
+
+      - name: Save Kubeconfig
+        run: doctl kubernetes cluster kubeconfig save league-of-locals-cluster
+
+      - name: Verify kubectl connection
+        run: kubectl get nodes
+
+      - name: Deploy to DigitalOcean Kubernetes
+        run: kubectl apply -f ./kube
+
+      - name: Set the correct image tag on the deployment
+        run: |
+          kubectl set image deployment/league-of-locals-admin-panel \
+            league-of-locals-admin-panel=ghcr.io/leagueoflocalsdev/league-of-locals-admin-panel:${{ github.sha }}
