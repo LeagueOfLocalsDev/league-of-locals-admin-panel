@@ -17,5 +17,13 @@ spec:
         image: ghcr.io/leagueoflocalsdev/league-of-locals-admin-panel:latest
         ports:
         - containerPort: 3000
+        env:
+          - name: APP_BASE_URL
+            value: "https://admin.leagueoflocals.xyz"
+          - name: NEXT_PUBLIC_BASE_PATH
+            value: "/admin"
+        envFrom:
+          - secretRef:
+              name: admin-panel-auth0-secrets
       imagePullSecrets:
       - name: ghcr-secret
