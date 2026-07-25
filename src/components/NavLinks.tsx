@@ -19,7 +19,7 @@ export default function NavLinks({ isAuthenticated }: NavLinksProps) {
   if (!isAuthenticated) return null;
 
   return (
-    <div className="flex flex-1 items-center justify-center gap-16">
+    <div className="flex flex-auto items-center justify-center gap-16">
       {navLinks.map((link) => (
         <Link
           key={link.href}

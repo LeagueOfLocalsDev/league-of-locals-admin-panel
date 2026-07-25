@@ -1,7 +1,13 @@
 "use client";
 
+import { useState, useEffect } from "react";
+
 export default function LogoutButton() {
-  const returnTo = `${window.location.origin}/admin/home`;
+  const [returnTo, setReturnTo] = useState("/admin/home");
+
+  useEffect(() => {
+    setReturnTo(`${window.location.origin}/admin/home`);
+  }, []);
 
   return (
     <a

@@ -22,6 +22,12 @@ spec:
             value: "https://admin.leagueoflocals.xyz"
           - name: NEXT_PUBLIC_BASE_PATH
             value: "/admin"
+          - name: USER_API_BASE_URL
+            value: "http://league-of-locals-user-api-svc:80"
+          - name: AUTH0_AUDIENCE
+            value: "https://api.leagueoflocals.xyz"
+          - name: AUTH0_SCOPE
+            value: "openid profile email"
         envFrom:
           - secretRef:
               name: admin-panel-auth0-secrets
