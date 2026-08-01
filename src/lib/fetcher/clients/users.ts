@@ -17,7 +17,7 @@ export const getUsers = async (): Promise<UserProfile[]> => {
     "Authorization": `Bearer ${token}`
   };
 
-  const response = await fetch(`${API_BASE}/api/v1/profiles`, { headers });
+  const response = await fetch(`${API_BASE}/profiles`, { headers });
   if (!response.ok) throw new Error(`Failed to fetch users: ${response.status}`);
   return response.json();
 };
@@ -25,7 +25,7 @@ export const getUsers = async (): Promise<UserProfile[]> => {
 // Fetch a single user profile by id. Automatically fetches the access token internally.
 export const getUser = async (userId: string): Promise<UserProfile | null> => {
   const { token } = await getServerAccessToken();
-  const response = await fetch(`${API_BASE.replace(/\/$/, "")}/api/v1/profiles/${userId}`, {
+  const response = await fetch(`${API_BASE}/profiles/${userId}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
 

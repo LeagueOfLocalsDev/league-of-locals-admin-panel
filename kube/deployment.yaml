@@ -23,7 +23,7 @@ spec:
           - name: NEXT_PUBLIC_BASE_PATH
             value: "/admin"
           - name: USER_API_BASE_URL
-            value: "http://league-of-locals-user-api-svc:80"
+            value: "http://league-of-locals-user-api-svc:80/user-profile-api"
           - name: AUTH0_AUDIENCE
             value: "https://api.leagueoflocals.xyz"
           - name: AUTH0_SCOPE
