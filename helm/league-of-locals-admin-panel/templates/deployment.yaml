@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "league-of-locals-admin-panel.fullname" . }}
+  annotations:
+    secrets.doppler.com/reload: "true"
+  labels:
+    {{- include "league-of-locals-admin-panel.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "league-of-locals-admin-panel.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "league-of-locals-admin-panel.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- if .Values.doppler.registry.enabled }}
+      imagePullSecrets:
+        - name: {{ required "doppler.registry.secretName must be set when the registry sync is enabled" .Values.doppler.registry.secretName }}
+      {{- end }}
+      containers:
+        - name: {{ include "league-of-locals-admin-panel.name" . }}
+          image: "{{ .Values.image.repository }}:{{ required "image.tag must be set to an immutable image tag" .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.targetPort }}
+              protocol: TCP
+          envFrom:
+            - secretRef:
+                name: {{ required "doppler.applicationSecretName must be set" .Values.doppler.applicationSecretName }}
+          env:
+            {{- if .Values.app.baseUrl }}
+            - name: APP_BASE_URL
+              value: {{ .Values.app.baseUrl | quote }}
+            {{- end }}
+            - name: NEXT_PUBLIC_BASE_PATH
+              value: {{ required "app.basePath must be set" .Values.app.basePath | quote }}
+            - name: USER_API_BASE_URL
+              value: {{ required "app.userApiBaseUrl must be set" .Values.app.userApiBaseUrl | quote }}
+            - name: AUTH0_AUDIENCE
+              value: {{ required "app.auth0Audience must be set" .Values.app.auth0Audience | quote }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

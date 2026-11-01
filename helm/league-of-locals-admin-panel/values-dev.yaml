@@ -1,0 +1,12 @@
+# Applied to the league-of-locals-dev namespace.
+image:
+  pullPolicy: Always
+
+# Dev uses the incoming request host until a dedicated hostname is configured.
+app:
+  baseUrl: "https://admin-dev.leagueoflocals.xyz"
+  auth0Audience: https://api-dev.leagueoflocals.xyz
+
+service:
+  type: NodePort
+  nodePort: 31248

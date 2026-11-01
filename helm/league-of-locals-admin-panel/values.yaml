@@ -1,0 +1,43 @@
+# Shared defaults. Deploy using one of the environment-specific values files.
+replicaCount: 1
+
+image:
+  repository: ghcr.io/leagueoflocalsdev/league-of-locals-admin-panel
+  # CI always overrides this with an immutable Git commit SHA.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+app:
+  # Leave blank to let Auth0 infer the URL from the incoming request. Set this
+  # for a stable, externally reachable hostname.
+  basePath: /admin
+  userApiBaseUrl: http://league-of-locals-user-api:80/user-profile-api
+
+# The Doppler operator uses a per-environment service token to continuously
+# populate the Kubernetes Secrets consumed by this release. Set project/config
+# through GitHub Environment variables or with --set-string for local deploys.
+doppler:
+  project: ""
+  config: ""
+  tokenSecretName: doppler-admin-panel-token
+  applicationSecretName: league-of-locals-admin-panel-secrets
+  registry:
+    enabled: true
+    # This is intentionally distinct from the User API's registry secret,
+    # avoiding two DopplerSecret resources managing the same Secret.
+    secretName: league-of-locals-admin-panel-ghcr-secret
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 3000
+  # Set only when type is NodePort.
+  nodePort: null
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi

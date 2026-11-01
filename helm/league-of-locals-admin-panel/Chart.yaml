@@ -1,0 +1,6 @@
+apiVersion: v2
+name: league-of-locals-admin-panel
+description: Helm chart for the League of Locals Admin Panel
+type: application
+version: 0.1.0
+appVersion: "latest"

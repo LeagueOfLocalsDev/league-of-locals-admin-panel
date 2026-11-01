@@ -1,0 +1,14 @@
+# Applied to the league-of-locals-prod namespace.
+image:
+  pullPolicy: IfNotPresent
+
+app:
+  # Leave blank to let Auth0 infer the URL from the incoming request. Set this
+  # for a stable, externally reachable hostname.
+  baseUrl: "https://admin.leagueoflocals.xyz"
+  auth0Audience: https://api.leagueoflocals.xyz
+
+service:
+  type: NodePort
+  # NodePorts are cluster-wide; production must not reuse dev's 31248.
+  nodePort: 31247

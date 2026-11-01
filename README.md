@@ -1,36 +1,102 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# League of Locals Admin Panel
 
-## Getting Started
+## Environments and deployments
 
-First, run the development server:
+The admin panel is deployed as the same Helm release
+(`league-of-locals-admin-panel`) into isolated Kubernetes namespaces:
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+| Environment | Namespace | Deployment path | Service port |
+| --- | --- | --- | --- |
+| Development | `league-of-locals-dev` | Every push to `main` | NodePort `31248` |
+| Production | `league-of-locals-prod` | Manual workflow dispatch after validation | NodePort `31247` |
+
+Every image is tagged with its full Git commit SHA. A push builds that image and
+deploys it to development. To promote a tested version, run **Build and Deploy
+Admin Panel** from the GitHub Actions UI, provide that exact SHA as `image_tag`,
+and approve the `production` environment when protection rules are enabled.
+
+The reusable deployment workflow installs Doppler Kubernetes Operator chart
+`1.7.1` as the cluster-wide `doppler-operator` release, then installs the Admin
+Panel chart in the target namespace. The operator synchronizes the Kubernetes
+Secrets from Doppler and restarts the Deployment when they change.
+
+For a local chart render:
+
+```sh
+helm lint ./helm/league-of-locals-admin-panel \
+  --values ./helm/league-of-locals-admin-panel/values-dev.yaml \
+  --set-string image.tag=example-sha \
+  --set-string doppler.project=your-project \
+  --set-string doppler.config=dev
+
+helm template league-of-locals-admin-panel ./helm/league-of-locals-admin-panel \
+  --namespace league-of-locals-dev \
+  --values ./helm/league-of-locals-admin-panel/values-dev.yaml \
+  --set-string image.tag=example-sha \
+  --set-string doppler.project=your-project \
+  --set-string doppler.config=dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Required setup before the first deployment
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Create a Doppler project with separate development and production configs (or
+separate projects). Each config needs these application values:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `AUTH0_DOMAIN`, `AUTH0_CLIENT_ID`, and `AUTH0_CLIENT_SECRET` for that
+  environment's Auth0 Regular Web Application.
+- `AUTH0_SECRET`, a distinct 32-byte hex value used to encrypt session and
+  transaction cookies. Generate one with `openssl rand -hex 32`.
+- `DOCKER_CONFIG_JSON` when the GHCR package is private. This must be valid
+  Docker config JSON with an `auths.ghcr.io` entry authorized to pull the image.
+  For a public image, set `doppler.registry.enabled=false` in the applicable
+  values file.
 
-## Learn More
+Create a read-only Doppler service token for each config. In both the `dev` and
+`production` GitHub Environments, configure:
 
-To learn more about Next.js, take a look at the following resources:
+| Setting | Type | Purpose |
+| --- | --- | --- |
+| `DOPPLER_PROJECT` | Variable | Doppler project slug for the environment |
+| `DOPPLER_CONFIG` | Variable | Doppler config slug for the environment |
+| `DOPPLER_SERVICE_TOKEN` | Secret | Read-only token scoped to that config |
+| `DO_API_TOKEN` | Secret | DigitalOcean token for cluster access; may instead be repository-wide |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The workflow creates only the environment-specific
+`doppler-admin-panel-token` bootstrap Secret. The Helm chart creates two
+`DopplerSecret` resources: one maintains
+`league-of-locals-admin-panel-secrets` for Auth0 values, and the other maintains
+`league-of-locals-admin-panel-ghcr-secret` for the registry credential. The
+registry Secret is distinct from the User API's one, so two Doppler resources do
+not manage the same Kubernetes Secret.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Register each environment's callback URL (`<external-base-url>/admin/auth/callback`)
+and logout URL (`<external-base-url>/admin`) in its Auth0 application. Production
+uses `https://admin.leagueoflocals.xyz`; set `app.baseUrl` in
+`values-dev.yaml` once development has a stable external hostname. Until then,
+the SDK safely derives the development base URL from the incoming request host,
+which must still be registered in Auth0.
 
-## Deploy on Vercel
+Give the GitHub `production` Environment the desired approval rule. The reusable
+workflow assigns that environment before it accesses the production Doppler
+token; neither secret values nor service tokens are stored in Helm values or
+Helm release history.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### One-time migration from raw manifests
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The former manifest deployment has no namespace and therefore normally resides
+in `default`, where it owns NodePort `31247`. Before the first production
+deployment, after the required setup is complete, verify and delete only those
+legacy resources:
+
+```sh
+kubectl -n default get deployment league-of-locals-admin-panel
+kubectl -n default get service league-of-locals-admin-panel-svc
+kubectl -n default delete deployment league-of-locals-admin-panel
+kubectl -n default delete service league-of-locals-admin-panel-svc
+```
+
+If the legacy workload is in another namespace, use that namespace instead. Do
+not delete a resource unless both its name and namespace match the old Admin
+Panel resources. Point the development and production Cloudflare Origin Rules at
+their respective NodePorts, and restrict direct access to the origin where
+possible.
